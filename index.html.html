@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마음숲 (Mind Forest) - 대시보드 에디션</title>
+    <!-- 심플하고 정갈한 본고딕 폰트 적용 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-sand: #f4f1ea;        /* 바탕 베이지색 */
+            --olive-green: #5d7e6c;    /* 시그니처 올리브 그린 */
+            --text-main: #4a4238;      /* 다크 브라운 글씨색 */
+            --accent-rose: #d97706;    /* 포인트 오렌지/브라운 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: #2b2b2b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* 16:9 가로형 태블릿 크기 고정 대시보드 메인 프레임 */
+        .app-container {
+            width: 1024px;
+            height: 576px;
+            background-color: var(--bg-sand);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+            border: 4px solid #333;
+        }
+
+        /* 🔒 일반 사이트 위장 버튼 스타일 */
+        .secret-btn {
+            background: #e11d48;
+            border: none;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: background 0.2s;
+        }
+        .secret-btn:hover { background: #be123c; }
+
+        .secret-btn-pre-login {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+        }
+
+        #disguise-overlay {
+            position: absolute;
+            inset: 0;
+            background: white;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+        }
+        #disguise-frame { width: 100%; flex: 1; border: none; }
+        .disguise-exit-btn {
+            background: #334155; color: white; text-align: center;
+            padding: 4px; font-size: 11px; cursor: pointer; border: none;
+        }
+
+        /* 상단 네비게이션 헤더 바 */
+        .app-header {
+            height: 45px; background: white; border-bottom: 2px solid #cdc2ae;
+            display: flex; align-items: center; padding: 0 20px; justify-content: space-between;
+        }
+        .app-logo { font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+        
+        .header-right-box { display: flex; align-items: center; gap: 15px; height: 100%; }
+        .nav-tabs { display: flex; gap: 4px; height: 100%; align-items: flex-end; }
+        .nav-tab-btn {
+            padding: 6px 16px; background: #e8e3d7; border: 2px solid #cdc2ae; border-bottom: none;
+            border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 12px; font-weight: bold;
+            color: #7a7060; cursor: pointer; transition: all 0.2s;
+        }
+        .nav-tab-btn.active { background: var(--olive-green); color: white; border-color: var(--olive-green); }
+
+        /* 메인 콘텐츠 뷰포트 영역 */
+        .main-content { flex: 1; position: relative; width: 100%; height: calc(100% - 45px); }
+        .screen { width: 100%; height: 100%; display: none; padding: 25px; }
+        .screen.active { display: block !important; }
+
+        /* ================= 🔐 [인증 화면] 로그인 / 회원가입 ================= */
+        .auth-wrapper {
+            max-w: 360px; margin: 30px auto 0; background: white; border: 2px solid #cdc2ae;
+            border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;
+        }
+        .auth-title { font-size: 22px; font-weight: 700; color: var(--text-main); margin-bottom: 5px; }
+        .auth-subtitle { font-size: 12px; color: #8a8070; margin-bottom: 20px; }
+        .auth-group { text-align: left; margin-bottom: 12px; }
+        .auth-group label { display: block; font-size: 11px; font-weight: 700; color: #6b6050; margin-bottom: 4px; margin-left: 2px; }
+        .auth-input { width: 100%; padding: 10px; border: 2px solid #e0dacb; border-radius: 8px; outline: none; font-size: 13px; text-align: center; font-weight: 500; }
+        .auth-input:focus { border-color: var(--olive-green); }
+        .auth-btn { width: 100%; padding: 12px; background: var(--olive-green); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; margin-top: 10px; }
+        .auth-btn:hover { background: #4a6657; }
+        .auth-link { font-size: 12px; color: #8a8070; margin-top: 15px; display: inline-block; cursor: pointer; text-decoration: underline; }
+
+        /* ================= 📝 [설문 조사 화면] ================= */
+        .survey-container { display: flex; flex-direction: column; height: 100%; justify-content: space-between; }
+        .survey-header { text-align: center; margin-bottom: 10px; }
+        .survey-header h2 { font-size: 18px; color: var(--text-main); }
+        .survey-scroll { flex: 1; overflow-y: auto; padding-right: 10px; margin: 10px 0; }
+        .survey-card { background: white; border: 2px solid #cdc2ae; border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; }
+        .survey-card p { font-size: 12px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+        .survey-select { width: 100%; padding: 8px; border: 2px solid #e0dacb; border-radius: 6px; outline: none; font-size: 12px; }
+        .survey-input { width: 100%; padding: 8px; border: 2px solid #e0dacb; border-radius: 6px; outline: none; font-size: 12px; }
+        .survey-next-btn { padding: 12px; background: var(--olive-green); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
+
+        /* ================= 🟦 [메인 탭 1] 캐릭터 & 의상 설정창 ================= */
+        .setup-container { display: flex; gap: 20px; height: 100%; }
+        .setup-selection-area { flex: 1.2; overflow-y: auto; padding-right: 10px; }
+        .setup-section { background: white; border: 2px solid #cdc2ae; border-radius: 14px; padding: 15px; margin-bottom: 15px; }
+        .setup-section h3 { font-size: 13px; color: var(--text-main); margin-bottom: 10px; }
+        .item-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .selection-card { background: #f7f5f0; border: 2px solid #cdc2ae; border-radius: 10px; padding: 8px; text-align: center; cursor: pointer; }
+        .selection-card.selected { background: #dbeef3; border-color: #2492a5; }
+        .selection-card img { width: 50px; height: 50px; object-fit: contain; display: block; margin: 0 auto 4px; }
+        .selection-card span { font-size: 11px; font-weight: bold; color: var(--text-main); }
+        .preview-side-panel { width: 280px; background: white; border: 2px solid #cdc2ae; border-radius: 16px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+        .preview-avatar-viewport { width: 100%; flex: 1; background: #e8e3d7; border-radius: 12px; margin: 10px 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview-layer { position: absolute; width: 75%; height: 75%; object-fit: contain; }
+
+        /* ================= 🟨 [메인 탭 2] 순수 홈화면 (원룸 일러스트 집중형) ================= */
+        .home-layout { display: flex; gap: 20px; height: 100%; }
+        .isometric-room-viewport {
+            flex: 1.5; border: 4px solid #c7b38d; border-radius: 18px; position: relative;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); background-size: cover; background-position: center;
+            background-image: url('Rimage.png'); 
+        }
+        .room-character-anchor { position: absolute; top: 58%; left: 50%; width: 110px; height: 150px; transform: translate(-50%, -50%); z-index: 50; cursor: pointer; }
+        .char-sticker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+        
+        /* 🪟 실시간 가구 배치를 위한 가변 컨테이너 박스 */
+        .decor-sticker-container { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+        .placed-decor-item { position: absolute; font-size: 32px; filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15)); text-shadow: 0 0 2px white; }
+
+        /* 대화방/우측 사이드 스크립트 패널 */
+        .chat-panel { flex: 0.9; background: white; border: 2px solid #cdc2ae; border-radius: 16px; display: flex; flex-direction: column; padding: 12px; }
+        .speech-box { flex: 1; background: #f7f5f0; border-radius: 12px; padding: 12px; font-size: 12.5px; line-height: 1.6; color: var(--text-main); overflow-y: auto; margin-bottom: 10px; border: 2px solid #e0dacb; text-align: left; }
+        .type-effect { border-right: 2px solid var(--olive-green); animation: blink 0.75s step-end infinite; }
+        .input-bar { display: flex; gap: 6px; }
+        .input-bar input { flex: 1; padding: 10px; border: 2px solid #cdc2ae; border-radius: 8px; outline: none; font-size: 12px; }
+        .input-bar button { background: var(--olive-green); color: white; border: none; padding: 0 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+
+        /* ================= 🛍️ [메인 탭 3] 소품 및 가구 테마 상점 구역 ================= */
+        .shop-container { display: flex; flex-direction: column; height: 100%; }
+        .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; overflow-y: auto; flex: 1; padding-right: 5px; }
+        .shop-card { background: white; border: 2px solid #cdc2ae; border-radius: 12px; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; }
+        .shop-icon { font-size: 28px; margin-bottom: 2px; }
+        .shop-title { font-size: 11.5px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .shop-price { font-size: 11px; color: var(--accent-rose); font-weight: 700; margin: 1px 0 4px; }
+        .shop-btn { width: 100%; padding: 6px; border: 1px solid #cdc2ae; border-radius: 6px; background: #f2ede4; font-size: 11px; font-weight: bold; cursor: pointer; color: #6b6050; }
+        .shop-btn.owned { background: #e2ece9; color: var(--olive-green); border-color: #b3cdc5; }
+        .shop-btn.active-placed { background: #dbeef3; color: #1e7080; border-color: #9ecad4; }
+
+        /* ================= 🎯 [메인 탭 4] 행동 다이어리 미션 리스트 ================= */
+        .mission-container { display: flex; flex-direction: column; height: 100%; }
+        .mission-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; flex: 1; padding-right: 5px; }
+        .mission-card { background: white; border: 2px solid #cdc2ae; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+        .mission-text { font-size: 12px; color: var(--text-main); font-weight: 500; text-align: left; }
+        .mission-btn { background: #f2ede4; border: 1px solid #cdc2ae; padding: 5px 10px; font-size: 11px; border-radius: 6px; cursor: pointer; font-weight: 700; color: #6b6050; transition: all 0.2s; }
+        .mission-btn.done { background: #e2ece9; color: var(--olive-green); border-color: #b3cdc5; cursor: not-allowed; }
+
+        /* ================= 🎯 [메인 탭 5] 전문 치료 센터 안내 ================= */
+        .center-container { display: flex; flex-direction: column; height: 100%; overflow-y: auto; background: white; border: 2px solid #cdc2ae; border-radius: 14px; padding: 20px; }
+        .center-title { font-size: 15px; font-weight: bold; color: var(--text-main); margin-bottom: 5px; }
+        .center-subtitle { font-size: 11px; color: #7a7060; margin-bottom: 15px; }
+        .center-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .center-table th { background: #f2ede4; color: var(--text-main); font-size: 12px; padding: 10px; border-bottom: 2px solid #cdc2ae; }
+        .center-table td { font-size: 12px; padding: 12px 10px; border-bottom: 1px solid #e8e3d7; color: #554d42; }
+        .center-tag { background: #e2ece9; color: var(--olive-green); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+        /* 공통 커스텀 유틸리티 */
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cdc2ae; border-radius: 4px; }
+        .user-status-bar { font-size: 11px; font-weight: bold; color: var(--olive-green); margin-bottom: 8px; text-align: right; }
+
+        @keyframes blink { from, to { border-color: transparent } 50% { border-color: var(--olive-green); } }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- 🔒 로그인 전 상단 고정 대피용 위장 버튼 -->
+        <button class="secret-btn secret-btn-pre-login" id="pre-login-secret" onclick="triggerCamouflage()">🔒 일반 사이트 위장</button>
+
+        <!-- 위장 모드 아이프레임 오버레이 -->
+        <div id="disguise-overlay">
+            <iframe id="disguise-frame" src=""></iframe>
+            <button class="disguise-exit-btn" onclick="closeCamouflage()">숲으로 돌아가기 (보안 해제)</button>
+        </div>
+
+        <!-- 글로벌 상단 GNB 메인 헤더 (로그인 후 노출) -->
+        <header class="app-header" id="main-header" style="display: none;">
+            <div class="app-logo">🧸 <span>마음숲 대시보드</span></div>
+            <div class="header-right-box">
+                <div class="nav-tabs">
+                    <button class="nav-tab-btn active" id="tab-setup" onclick="switchTab('screen-setup')">단짝 코디룸</button>
+                    <button class="nav-tab-btn" id="tab-home" onclick="switchTab('screen-home')">아늑한 원룸</button>
+                    <button class="nav-tab-btn" id="tab-shop" onclick="switchTab('screen-shop')">소품 상점</button>
+                    <button class="nav-tab-btn" id="tab-mission" onclick="switchTab('screen-mission')">치료 다이어리</button>
+                    <button class="nav-tab-btn" id="tab-center" onclick="switchTab('screen-center')">치료 센터</button>
+                </div>
+                <button class="secret-btn" onclick="triggerCamouflage()">🔒 위장 대피</button>
+            </div>
+        </header>
+
+        <!-- 마스터 콘텐츠 프레임 뷰포트 -->
+        <div class="main-content">
+
+            <!-- SCREEN 1: 로그인 창 -->
+            <div id="screen-login" class="screen active">
+                <div class="auth-wrapper">
+                    <div class="auth-title">어서오세요 🧸</div>
+                    <div class="auth-subtitle">오직 가입 완료된 아이디로만 로그인이 가능합니다.</div>
+                    <div class="auth-group">
+                        <label>아이디</label>
+                        <input type="text" id="loginId" class="auth-input" placeholder="아이디를 입력하세요">
+                    </div>
+                    <div class="auth-group">
+                        <label>비밀번호</label>
+                        <input type="password" id="loginPw" class="auth-input" placeholder="비밀번호를 입력하세요">
+                    </div>
+                    <button class="auth-btn" onclick="handleLogin()">안전 로그인 실행</button>
+                    <a class="auth-link" onclick="switchAuthMode('register')">아직 계정이 없으신가요? 회원가입하기</a>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: 회원가입 창 -->
+            <div id="screen-register" class="screen">
+                <div class="auth-wrapper">
+                    <div class="auth-title">첫 회원가입 ✨</div>
+                    <div class="auth-subtitle">마음숲 안전 계정을 영구적으로 등록합니다.</div>
+                    <div class="auth-group">
+                        <label>생성할 아이디</label>
+                        <input type="text" id="regId" class="auth-input" placeholder="아이디 입력">
+                    </div>
+                    <div class="auth-group">
+                        <label>생성할 비밀번호</label>
+                        <input type="password" id="regPw" class="auth-input" placeholder="비밀번호 입력">
+                    </div>
+                    <button class="auth-btn" onclick="handleRegister()">가입 완료 및 계정 저장</button>
+                    <a class="auth-link" onclick="switchAuthMode('login')">이미 가입된 계정이 있나요? 로그인하기</a>
+                </div>
+            </div>
+
+            <!-- SCREEN 3: 진입 차단형 우울 척도 조사 -->
+            <div id="screen-survey-dep" class="screen">
+                <div class="survey-container">
+                    <div class="survey-header">
+                        <h2>내 마음 컨디션 검사 (지난 2주 기준)</h2>
+                    </div>
+                    <div class="survey-scroll custom-scroll" id="dep-questions-box">
+                        <!-- JS동적 주입 -->
+                    </div>
+                    <button class="survey-next-btn" onclick="submitDepSurvey()">다음 단계: 가치관 주관식 문항 서술하기 ➡️</button>
+                </div>
+            </div>
+
+            <!-- SCREEN 4: 진입 차단형 가치관 조사 -->
+            <div id="screen-survey-val" class="screen">
+                <div class="survey-container">
+                    <div class="survey-header">
+                        <h2>나를 찾는 심층 가치관 질문지</h2>
+                    </div>
+                    <div class="survey-scroll custom-scroll" id="val-questions-box">
+                        <!-- JS동적 주입 -->
+                    </div>
+                    <button class="survey-next-btn" onclick="submitValSurveyFinal()">설문 마감 및 데이터 동기화 완료 🚪</button>
+                </div>
+            </div>
+
+            <!-- TAB 1: 코디룸 및 세팅창 -->
+            <div id="screen-setup" class="screen">
+                <div class="setup-container">
+                    <div class="setup-selection-area custom-scroll">
+                        <div class="setup-section">
+                            <h3>🦊 단짝 동물 파트너 교체 선택</h3>
+                            <div class="item-grid">
+                                <div class="selection-card selected" id="card-anim-Q" onclick="selectAnimal('Qimage.png', 'Q')">
+                                    <img src="Qimage.png" alt="쿼카"><span>쿼카</span>
+                                </div>
+                                <div class="selection-card" id="card-anim-H" onclick="selectAnimal('Himage.png', 'H')">
+                                    <img src="Himage.png" alt="햄스터"><span>햄스터</span>
+                                </div>
+                                <div class="selection-card" id="card-anim-C" onclick="selectAnimal('Cimage.png', 'C')">
+                                    <img src="Cimage.png" alt="고양이"><span>고양이</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setup-section">
+                            <h3>👚 상점 의상 인벤토리 코디네이션</h3>
+                            <div class="item-grid">
+                                <div class="selection-card selected" id="card-cloth-none" onclick="selectCloth('', 'none')">
+                                    <div style="font-size:26px; margin-bottom:4px; line-height:1; padding-top:10px;">👕</div>
+                                    <span>기본 내추럴</span>
+                                </div>
+                                <div class="selection-card" id="card-cloth-T1" onclick="selectCloth('Timage.png', 'T1')">
+                                    <img src="Timage.png" alt="크롭티"><span>하트 크롭티</span>
+                                </div>
+                                <div class="selection-card" id="card-cloth-T2" onclick="selectCloth('Timagee.png', 'T2')">
+                                    <img src="Timagee.png" alt="스웨터"><span>하트 스웨터</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-side-panel">
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">실시간 조합 레이어 검수</div>
+                        <div class="preview-avatar-viewport">
+                            <img id="preview-base" class="preview-layer" src="Qimage.png" alt="베이스">
+                            <img id="preview-cloth" class="preview-layer" src="" alt="의상" style="display:none; z-index: 10;">
+                        </div>
+                        <button class="start-btn" onclick="switchTab('screen-home')">설정 적용 후 아늑한 방 가기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: 순수 쿼터뷰 원룸 집중형 홈화면 -->
+            <div id="screen-home" class="screen">
+                <div class="home-layout">
+                    <!-- 원룸 배경 뷰포트 공간 -->
+                    <div class="isometric-room-viewport" id="room-viewport">
+                        <!-- 동적으로 가구가 배치되는 컨테이너 레이어 -->
+                        <div class="decor-sticker-container" id="decor-sticker-box"></div>
+
+                        <!-- 중앙 아바타 앵커 -->
+                        <div class="room-character-anchor" onclick="petCharacter()">
+                            <img id="home-base-char" class="char-sticker-layer" src="Qimage.png" alt="캐릭터">
+                            <img id="home-cloth-layer" class="char-sticker-layer" src="" alt="의상오버랩" style="display:none; z-index: 10;">
+                        </div>
+                    </div>
+
+                    <!-- 가짜 챗봇 위로 대화형 패널 -->
+                    <div class="chat-panel">
+                        <div class="user-status-bar">🍬 나의 사탕 보상: <span class="candy-display-node">200</span>개</div>
+                        <div class="speech-box">
+                            <span id="type-target" class="type-effect"></span>
+                        </div>
+                        <div class="input-bar">
+                            <input type="text" id="chat-txt" placeholder="오늘 지치거나 우울했던 마음을 남겨주세요..." onkeypress="if(event.key==='Enter') commitTalk()">
+                            <button onclick="commitTalk()">전송</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: 소품 및 가구 테마 상점 구역 -->
+            <div id="screen-shop" class="screen">
+                <div class="shop-container">
+                    <div class="user-status-bar" style="text-align: left; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                        <span>🛒 50종 이상의 감성 인테리어 소품과 벽지 소품들을 수집해 나만의 다락방을 완성하세요!</span>
+                        <span style="color: var(--accent-rose);">🍬 내 사탕: <b class="candy-display-node">200</b>개</span>
+                    </div>
+                    <div class="shop-grid custom-scroll" id="shop-grid-box">
+                        <!-- JS동적 생성 주입 (54종) -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: 행동 다이어리 미션 리스트 -->
+            <div id="screen-mission" class="screen">
+                <div class="mission-container">
+                    <div style="margin-bottom: 12px; font-size:13px; color:var(--text-main); font-weight:bold;">🎯 행동 활성화 솔루션 다이어리 (미션 완료 시 사탕 지급)</div>
+                    <div class="mission-grid custom-scroll" id="mission-grid-box">
+                        <!-- 자바스크립트로 다량의 미션 리스트 주입 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: 치료 센터 -->
+            <div id="screen-center" class="screen">
+                <div class="center-container custom-scroll">
+                    <div class="center-title">🏥 공인 마음 안심 상담 치료 센터</div>
+                    <div class="center-subtitle">마음의 위기와 불안감이 찾아왔을 때 24시간 언제든 도움을 받을 수 있는 국가 공인 전문 무료 채널입니다.</div>
+                    <table class="center-table">
+                        <thead>
+                            <tr>
+                                <th>기관 및 센터명</th>
+                                <th>안심 핫라인 번호</th>
+                                <th>비고 및 상담 성격</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>정신건강 상담 전화</td>
+                                <td><b style="color: var(--olive-green);">109</b></td>
+                                <td><span class="center-tag">24시간 운영</span> 위기상담 종합 안내</td>
+                            </tr>
+                            <tr>
+                                <td>보건복지 상담 센터</td>
+                                <td><b style="color: var(--olive-green);">129</b></td>
+                                <td>보건 복지 관련 및 심리 케어 정보 연동</td>
+                            </tr>
+                            <tr>
+                                <td>청소년 모바일 심리 상담</td>
+                                <td><b style="color: var(--olive-green);">1388</b></td>
+                                <td>불안, 학업 스트레스, 대인관계 1:1 매칭 조율</td>
+                            </tr>
+                            <tr>
+                                <td>정신건강복지센터</td>
+                                <td>지역별 센터 조회</td>
+                                <td>거주지 인근 전문의 연계 무료 검사 및 지속 치료 지원</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 비즈니스 데이터 상태 관리
+        let appState = {
+            activeUser: '',
+            chosenAnimalFile: 'Qimage.png',
+            chosenAnimalKey: 'Q',
+            chosenClothFile: '',
+            chosenClothKey: 'none',
+            candies: 200,
+            hasSurveyed: false,
+            ownedItems: [],       
+            placedItems: [],      
+            completedMissions: [] 
+        };
+
+        const DEPRESSION_9_QUESTIONS = [
+            "1. 평소 하던 일에 흥미나 즐거움을 거의 느끼지 못하나요?",
+            "2. 기분이 가라앉거나, 우울하거나, 희망이 없다고 느끼십니까?",
+            "3. 잠들기가 어렵거나 자주 깨며, 혹은 잠을 너무 과도하게 자나요?",
+            "4. 온종일 피곤하다고 느끼거나 일상적인 일을 할 기운이 없습니까?",
+            "5. 식욕이 눈에 띄게 줄었거나, 반대로 과도하게 음식을 먹나요?",
+            "6. 내 자신이 실패자라고 느끼거나, 주변을 실망시켰다고 괴로워하나요?",
+            "7. 신문을 읽거나 컴퓨터 화면을 볼 때 등 집중하기가 매우 어렵습니까?",
+            "8. 행동이나 말이 남들이 알아챌 정도로 느려졌거나, 반대로 너무 초조합니까?",
+            "9. 마음을 다치거나 무기력해지는 생각들이 자주 떠오르나요?"
+        ];
+
+        const VALUES_9_QUESTIONS = [
+            "1. 현재 나를 가장 지치게 만드는 마음의 주된 방해요소는 무엇인가요?",
+            "2. 온전히 나만의 행복감을 채워줄 수 있는 소소한 힐링 행위는?",
+            "3. 사회적 기준을 제외하고 내가 살고 싶은 이상적인 하루의 모습은 어떤가요?",
+            "4. 주변 시선 때문에 솔직하게 털어놓지 못했던 나만의 고민이 있나요?",
+            "5. 내가 내 본모습을 있는 그대로 인정하고 격려해준 적이 언제인가요?",
+            "6. 최근 들어 사소하지만 감사함을 느꼈던 순간이 있다면?",
+            "7. 어떤 말을 들었을 때 가장 큰 마음에 위로와 평안을 얻으시나요?",
+            "8. 나를 아프게 했던 과거의 기억에게 던지고 싶은 한 줄 메시지는?",
+            "9. 1년 후 더 단단해져 있을 나 자신에게 약속하고 싶은 다짐은?"
+        ];
+
+        const CBT_BEHAVIOR_MISSIONS = [
+            "🛌 밤 11시 스마트폰 멀리 두고 눈 감기", "🥛 따뜻한 물 한 잔 천천히 음미하며 마시기",
+            "🧘 조용히 눈을 감고 깊게 심호흡 3회 하기", "☀️ 바깥에 나가서 햇빛 5분 동안 쬐기",
+            "🪴 내 책상 주변의 먼지를 가볍게 정돈하기", "🎵 마음을 편안하게 해주는 음악 듣기",
+            "🚶 집 주변 산책로 10분 가볍게 걸어보기", "🙌 거울 속 내 자신을 보며 활짝 미소 짓기",
+            "📖 마음이 차분해지는 책 3페이지 정독하기", "🪟 아침에 일어나자마자 창문 열고 환기하기",
+            "👟 편한 운동화 신고 기지개 크게 한 번 켜기", "📝 오늘 고마웠던 일 딱 한 가지만 적어보기",
+            "🧸 단짝 캐릭터 인형 쓰다듬어주기", "💡 방 안의 조명을 조금 아늑하게 조절하기",
+            "🧣 목과 어깨를 부드럽게 스트레칭 해주기", "🍀 길가에 핀 작은 풀잎 사진 찍어보기"
+        ];
+
+        // 대폭 확장된 총 54종의 쿼터뷰 인테리어 소품 데이터셋 (ID, 이름, 이모지, 가격, 좌표 배치정보)
+        const COZY_SHOP_ITEMS = [
+            // 가구류 (대형/소형)
+            { id: "window", name: "햇살 감성 큰 창문", emoji: "🪟", price: 30, top: "12%", left: "22%", size: "55px" },
+            { id: "clock", name: "뻐꾸기 추 벽시계", emoji: "🕒", price: 15, top: "10%", left: "45%", size: "35px" },
+            { id: "sofa", name: "포근한 패브릭 소파", emoji: "🛋️", price: 50, top: "52%", left: "24%", size: "50px" },
+            { id: "plant", name: "공기정화 몬스테라", emoji: "🪴", price: 20, top: "40%", left: "12%", size: "45px" },
+            { id: "tv", name: "레트로 브라운관 TV", emoji: "📺", price: 60, top: "68%", left: "68%", size: "45px" },
+            { id: "lamp", name: "오렌지 무드 단스탠드", emoji: "💡", price: 25, top: "32%", left: "78%", size: "40px" },
+            { id: "bed", name: "폭신폭신 안심 침대", emoji: "🛏️", price: 80, top: "20%", left: "65%", size: "55px" },
+            { id: "table", name: "원목 원형 커피테이블", emoji: "🪵", price: 35, top: "68%", left: "45%", size: "42px" },
+            { id: "bookshelf", name: "지식 가득 미니책장", emoji: "📚", price: 45, top: "35%", left: "32%", size: "48px" },
+            { id: "mirror", name: "앤티크 원형 전신거울", emoji: "🪞", price: 40, top: "50%", left: "10%", size: "45px" },
+            { id: "chair", name: "흔들의자 안락체어", emoji: "🪑", price: 30, top: "52%", left: "40%", size: "40px" },
+            { id: "desk", name: "작업용 화이트 책상", emoji: "💻", price: 70, top: "38%", left: "48%", size: "50px" },
+            // 소품류
+            { id: "doll", name: "단짝 거대 곰인형", emoji: "🧸", price: 25, top: "55%", left: "18%", size: "38px" },
+            { id: "easel", name: "방구석 아틀리에 이젤", emoji: "🎨", price: 35, top: "45%", left: "80%", size: "45px" },
+            { id: "audio", name: "턴테이블 아날로그 오디오", emoji: "📻", price: 50, top: "72%", left: "80%", size: "35px" },
+            { id: "aquarium", name: "마음정화 미니 수족관", emoji: "🫧", price: 40, top: "42%", left: "60%", size: "36px" },
+            { id: "flower", name: "행복 가득 노란 해바라기", emoji: "🌻", price: 15, top: "72%", left: "35%", size: "32px" },
+            { id: "cactus", name: "귀여운 동글 선인장", emoji: "🌵", price: 12, top: "42%", left: "28%", size: "30px" },
+            { id: "rug", name: "구름 파스텔 극세사 러그", emoji: "🧺", price: 20, top: "75%", left: "48%", size: "60px" },
+            { id: "frame", name: "초록 숲 풍경 액자", emoji: "🖼️", price: 18, top: "14%", left: "55%", size: "40px" },
+            { id: "calendar", name: "소소한 일간 달력", emoji: "📅", price: 10, top: "18%", left: "36%", size: "28px" },
+            { id: "candle", name: "은은한 바닐라 향초", emoji: "🕯️", price: 10, top: "70%", left: "62%", size: "25px" },
+            { id: "curtain", name: "레이스 쉬폰 커튼", emoji: " drapery", emoji: "🎪", price: 30, top: "8%", left: "16%", size: "60px" },
+            { id: "diffuser", name: "라벤더 아로마 디퓨저", emoji: "🧪", price: 12, top: "45%", left: "52%", size: "22px" },
+            // 취미 및 생활 소품
+            { id: "guitar", name: "감성 통기타 오브제", emoji: "🎸", price: 40, top: "58%", left: "85%", size: "42px" },
+            { id: "cat_tower", name: "단짝 고양이 캣타워", emoji: "🌲", price: 55, top: "30%", left: "5%", size: "65px" },
+            { id: "tea_set", name: "따뜻한 보리차 티세트", emoji: "🍵", price: 15, top: "66%", left: "50%", size: "26px" },
+            { id: "cushion", name: "동글 말랑 하트 쿠션", emoji: "💖", price: 10, top: "55%", left: "28%", size: "28px" },
+            { id: "tissue", name: "포근한 무형광 티슈", emoji: "🧻", price: 5, top: "66%", left: "42%", size: "24px" },
+            { id: "mat", name: "체커보드 감성 발매트", emoji: "🗺️", price: 15, top: "85%", left: "45%", size: "45px" },
+            { id: "fan", name: "시원한 빈티지 선풍기", emoji: "🎐", price: 22, top: "72%", left: "15%", size: "35px" },
+            { id: "clock_table", name: "디지털 우드 탁상시계", emoji: "⏰", price: 12, top: "38%", left: "55%", size: "24px" },
+            { id: "globe", name: "자유를 꿈꾸는 지구본", emoji: "🌐", price: 25, top: "36%", left: "35%", size: "32px" },
+            { id: "notebook", name: "일기 쓰기 좋은 가죽노트", emoji: "📔", price: 8, top: "42%", left: "46%", size: "22px" },
+            { id: "coffee", name: "갓 내린 따뜻한 아메리카노", emoji: "☕", price: 5, top: "40%", left: "51%", size: "20px" },
+            { id: "slippers", name: "푹신한 양털 거실화", emoji: "🩴", price: 8, top: "82%", left: "38%", size: "26px" },
+            // 파티 및 시즌 소품
+            { id: "star_light", name: "반짝반짝 벽면 은하수 전구", emoji: "✨", price: 25, top: "5%", left: "50%", size: "40px" },
+            { id: "tree", name: "미니 크리스마스 트리", emoji: "🎄", price: 50, top: "45%", left: "88%", size: "55px" },
+            { id: "wreath", name: "문 앞에 거는 리스 장식", emoji: "⭕", price: 15, top: "15%", left: "15%", size: "35px" },
+            { id: "balloon", name: "힐링 축하 파스텔 풍선", emoji: "🎈", price: 12, top: "30%", left: "88%", size: "40px" },
+            { id: "cake", name: "자축용 미니 생크림 케이크", emoji: "🎂", price: 20, top: "68%", left: "54%", size: "28px" },
+            { id: "wine", name: "무알콜 포도주와 잔", emoji: "🍷", price: 18, top: "72%", left: "56%", size: "25px" },
+            // 과일 및 자연주의 인테리어
+            { id: "orange_basket", name: "상큼 청량 귤바구니", emoji: "🧺", price: 10, top: "66%", left: "46%", size: "25px" },
+            { id: "plant2", name: "천장에 다는 행잉 플랜트", emoji: "🌿", price: 18, top: "5%", left: "35%", size: "35px" },
+            { id: "plant3", name: "벽면 넝쿨 잎사귀", emoji: "🍃", price: 12, top: "5%", left: "70%", size: "30px" },
+            { id: "terrarium", name: "이끼 정화 테라리움", emoji: "🌱", price: 15, top: "40%", left: "58%", size: "24px" },
+            // 힐링 마법 도구
+            { id: "crystal", name: "행운의 보랏빛 자수정", emoji: "🔮", price: 30, top: "38%", left: "58%", size: "26px" },
+            { id: "music_box", name: "오르골 아날로그 뮤직박스", emoji: "🎵", price: 25, top: "70%", left: "76%", size: "25px" },
+            { id: "letter", name: "고마운 마음을 담은 편지봉투", emoji: "✉️", price: 5, top: "43%", left: "44%", size: "20px" },
+            { id: "glasses", name: "단짝용 패션 둥근안경", emoji: "👓", price: 10, top: "43%", left: "49%", size: "22px" },
+            { id: "candy_jar", name: "알록달록 유리 사탕병", emoji: "🫙", price: 15, top: "38%", left: "32%", size: "25px" },
+            { id: "camera", name: "추억 저장 빈티지 토이카메라", emoji: "📷", price: 25, top: "41%", left: "53%", size: "22px" },
+            { id: "umbrella", name: "노란색 우산 꽂이 스탠드", emoji: "🌂", price: 15, top: "75%", left: "8%", size: "38px" },
+            { id: "safe_box", name: "소중한 일기 비밀 금고", emoji: "🧳", price: 40, top: "76%", left: "74%", size: "35px" }
+        ];
+
+        const LOCAL_MOCK_RESPONSES = [
+            "그랬구나.. 마음속 깊은 곳에 무거운 짐을 안고 있는 기분이었겠어. 하지만 이 방 안에서만큼은 무겁게 생각하지 않고 마음을 편히 내려두어도 괜찮아. 너는 충분히 잘해내고 있어.",
+            "얘기를 들려줘서 고마워. 거울을 보듯 네 마음을 찬찬히 쓰다듬어 줄게. 오늘 밤은 아무 걱정 없이 포근한 꿈을 꾸었으면 좋겠어. 언제나 네 곁을 조용히 지키고 있을게.",
+            "많이 지치고 힘든 시간이었을 텐데 이렇게 나누어줘서 참 다행이야. 작은 실천 미션들을 하나씩 달성해 가면서 우리 조금씩 더 밝은 햇살을 맞이해 보자. 🍬"
+        ];
+        let mockIndex = 0;
+
+        // 일반 사이트 위장 기능
+        function triggerCamouflage() {
+            let savedUrl = localStorage.getItem('cozy_camouflage_url');
+            if(!savedUrl) {
+                savedUrl = prompt("위장 모드로 연결할 사이트 주소를 입력하세요(최초 1회만 설정):", "https://www.wikipedia.org");
+                if(!savedUrl) return;
+                if(!savedUrl.startsWith('http://') && !savedUrl.startsWith('https://')) {
+                    savedUrl = 'https://' + savedUrl;
+                }
+                localStorage.setItem('cozy_camouflage_url', savedUrl);
+            }
+            document.getElementById('disguise-frame').src = savedUrl;
+            document.getElementById('disguise-overlay').style.display = 'flex';
+        }
+
+        function closeCamouflage() {
+            document.getElementById('disguise-overlay').style.display = 'none';
+            document.getElementById('disguise-frame').src = "";
+        }
+
+        // 로그인
+        function handleLogin() {
+            const uid = document.getElementById('loginId').value.trim();
+            const upw = document.getElementById('loginPw').value.trim();
+            if(!uid || !upw) return alert('아이디와 비밀번호를 모두 채워주세요!');
+
+            let users = JSON.parse(localStorage.getItem('cozy_user_db')) || [];
+            let matched = users.find(u => u.id === uid && u.pw === upw);
+
+            if(!matched) {
+                return alert('등록되지 않은 회원 계정이거나 정보가 잘못되었습니다. 먼저 회원가입을 완료해 주세요!');
+            }
+
+            appState.activeUser = matched.id;
+            appState.chosenAnimalFile = matched.chosenAnimalFile || 'Qimage.png';
+            appState.chosenAnimalKey = matched.chosenAnimalKey || 'Q';
+            appState.chosenClothFile = matched.chosenClothFile || '';
+            appState.chosenClothKey = matched.chosenClothKey || 'none';
+            appState.candies = matched.candies !== undefined ? matched.candies : 200;
+            appState.hasSurveyed = matched.hasSurveyed || false;
+            appState.ownedItems = matched.ownedItems || [];
+            appState.placedItems = matched.placedItems || [];
+            appState.completedMissions = matched.completedMissions || [];
+
+            updateCandyDisplay();
+            document.getElementById('pre-login-secret').style.display = 'none';
+
+            if(appState.hasSurveyed) {
+                document.getElementById('main-header').style.display = 'flex';
+                syncLayersAll();
+                switchScreenDirect('screen-home');
+                switchTab('screen-home');
+                typeScript(`다시 포근한 방에 오신 것을 환영해요, ${appState.activeUser}님! ✨`);
+            } else {
+                buildSurveyForms();
+                switchScreenDirect('screen-survey-dep');
+            }
+        }
+
+        // 회원가입
+        function handleRegister() {
+            const uid = document.getElementById('regId').value.trim();
+            const upw = document.getElementById('regPw').value.trim();
+            if(!uid || !upw) return alert('아이디와 비밀번호를 빠짐없이 기재하세요.');
+
+            let users = JSON.parse(localStorage.getItem('cozy_user_db')) || [];
+            if(users.some(u => u.id === uid)) return alert('이미 존재하는 아이디입니다.');
+
+            users.push({
+                id: uid, pw: upw,
+                chosenAnimalFile: 'Qimage.png', chosenAnimalKey: 'Q',
+                chosenClothFile: '', chosenClothKey: 'none',
+                candies: 200, hasSurveyed: false,
+                ownedItems: [], placedItems: [], completedMissions: []
+            });
+
+            localStorage.setItem('cozy_user_db', JSON.stringify(users));
+            alert('회원가입이 완료되었습니다! 가입하신 정보로 로그인해 주세요. 🎉');
+            switchAuthMode('login');
+        }
+
+        function saveUserDataToStorage() {
+            let users = JSON.parse(localStorage.getItem('cozy_user_db')) || [];
+            let idx = users.findIndex(u => u.id === appState.activeUser);
+            if(idx !== -1) {
+                users[idx].chosenAnimalFile = appState.chosenAnimalFile;
+                users[idx].chosenAnimalKey = appState.chosenAnimalKey;
+                users[idx].chosenClothFile = appState.chosenClothFile;
+                users[idx].chosenClothKey = appState.chosenClothKey;
+                users[idx].candies = appState.candies;
+                users[idx].hasSurveyed = appState.hasSurveyed;
+                users[idx].ownedItems = appState.ownedItems;
+                users[idx].placedItems = appState.placedItems;
+                users[idx].completedMissions = appState.completedMissions;
+                localStorage.setItem('cozy_user_db', JSON.stringify(users));
+            }
+        }
+
+        function updateCandyDisplay() {
+            document.querySelectorAll('.candy-display-node').forEach(el => {
+                el.innerText = appState.candies;
+            });
+        }
+
+        function buildSurveyForms() {
+            const depBox = document.getElementById('dep-questions-box');
+            depBox.innerHTML = '';
+            DEPRESSION_9_QUESTIONS.forEach(q => {
+                const card = document.createElement('div');
+                card.className = "survey-card";
+                card.innerHTML = `<p>${q}</p><select class="survey-select"><option>전혀 아니다 (0점)</option><option>가끔 그렇다 (1점)</option><option>자주 느낀다 (2점)</option><option>매일 극심하게 느낀다 (3점)</option></select>`;
+                depBox.appendChild(card);
+            });
+
+            const valBox = document.getElementById('val-questions-box');
+            valBox.innerHTML = '';
+            VALUES_9_QUESTIONS.forEach(q => {
+                const card = document.createElement('div');
+                card.className = "survey-card";
+                card.innerHTML = `<p>${q}</p><input type="text" class="survey-input" placeholder="여기에 내 솔직한 생각을 편안하게 작성해 주세요...">`;
+                valBox.appendChild(card);
+            });
+        }
+
+        function submitDepSurvey() { switchScreenDirect('screen-survey-val'); }
+        
+        function submitValSurveyFinal() {
+            appState.hasSurveyed = true;
+            saveUserDataToStorage();
+            
+            document.getElementById('main-header').style.display = 'flex';
+            syncLayersAll();
+            switchScreenDirect('screen-home');
+            switchTab('screen-home');
+            typeScript("모든 가치관 조사가 완료되었습니다! 나만의 쿼터뷰 다락방에 온 걸 환영해!");
+        }
+
+        // 레이어 코디방 스위칭
+        function selectAnimal(file, key) {
+            appState.chosenAnimalFile = file; appState.chosenAnimalKey = key;
+            document.querySelectorAll('#screen-setup .setup-section:nth-child(1) .selection-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById(`card-anim-${key}`).classList.add('selected');
+            document.getElementById('preview-base').src = file;
+            saveUserDataToStorage();
+            syncLayersAll();
+        }
+
+        function selectCloth(file, key) {
+            appState.chosenClothFile = file; appState.chosenClothKey = key;
+            document.querySelectorAll('#screen-setup .setup-section:nth-child(2) .selection-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById(`card-cloth-${key}`).classList.add('selected');
+            
+            const pCloth = document.getElementById('preview-cloth');
+            if(file) { pCloth.src = file; pCloth.style.display = 'block'; } 
+            else { pCloth.style.display = 'none'; }
+            saveUserDataToStorage();
+            syncLayersAll();
+        }
+
+        // 글로벌 레이어 상태 새로고침 복원 동기화 함수
+        function syncLayersAll() {
+            document.getElementById('home-base-char').src = appState.chosenAnimalFile;
+            const hCloth = document.getElementById('home-cloth-layer');
+            if(appState.chosenClothFile) {
+                hCloth.src = appState.chosenClothFile; hCloth.style.display = 'block';
+            } else {
+                hCloth.style.display = 'none';
+            }
+
+            document.querySelectorAll('.selection-card').forEach(c => c.classList.remove('selected'));
+            if(document.getElementById(`card-anim-${appState.chosenAnimalKey}`)) document.getElementById(`card-anim-${appState.chosenAnimalKey}`).classList.add('selected');
+            if(document.getElementById(`card-cloth-${appState.chosenClothKey}`)) document.getElementById(`card-cloth-${appState.chosenClothKey}`).classList.add('selected');
+            
+            document.getElementById('preview-base').src = appState.chosenAnimalFile;
+            if(appState.chosenClothFile) {
+                document.getElementById('preview-cloth').src = appState.chosenClothFile;
+                document.getElementById('preview-cloth').style.display = 'block';
+            } else {
+                document.getElementById('preview-cloth').style.display = 'none';
+            }
+
+            // 🪟 54종 가구 소품 데이터 실시간 렌더링 오버레이 가동
+            const stickerBox = document.getElementById('decor-sticker-box');
+            stickerBox.innerHTML = ''; // 초기화 후 재배치
+            
+            COZY_SHOP_ITEMS.forEach(item => {
+                if (appState.placedItems.includes(item.id)) {
+                    const el = document.createElement('div');
+                    el.className = "placed-decor-item";
+                    el.id = `placed-node-${item.id}`;
+                    el.innerText = item.emoji;
+                    el.style.top = item.top;
+                    el.style.left = item.left;
+                    el.style.fontSize = item.size;
+                    stickerBox.appendChild(el);
+                }
+            });
+
+            renderMissions();
+            renderShopGrid();
+            updateCandyDisplay();
+        }
+
+        // 상점 데이터셋 동적 그리드 주입
+        function renderShopGrid() {
+            const container = document.getElementById('shop-grid-box');
+            container.innerHTML = '';
+
+            COZY_SHOP_ITEMS.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "shop-card";
+
+                const isOwned = appState.ownedItems.includes(item.id);
+                const isPlaced = appState.placedItems.includes(item.id);
+
+                let btnText = `${item.price} 🍬 구매`;
+                let btnClass = "shop-btn";
+
+                if (isOwned) {
+                    if (isPlaced) {
+                        btnText = "배치 해제";
+                        btnClass = "shop-btn active-placed";
+                    } else {
+                        btnText = "원룸 배치";
+                        btnClass = "shop-btn owned";
+                    }
+                }
+
+                card.innerHTML = `
+                    <div class="shop-icon" title="${item.name}">${item.emoji}</div>
+                    <div>
+                        <div class="shop-title">${item.name}</div>
+                        <div class="shop-price">${isOwned ? '보유함' : item.price + ' 사탕'}</div>
+                    </div>
+                    <button class="${btnClass}" onclick="handleShopAction('${item.id}', ${item.price})">${btnText}</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function handleShopAction(itemId, price) {
+            const isOwned = appState.ownedItems.includes(itemId);
+            const isPlaced = appState.placedItems.includes(itemId);
+
+            if (!isOwned) {
+                if (appState.candies < price) {
+                    return alert("사탕이 부족합니다! 행동 다이어리 미션을 달성해서 사탕을 더 모아와주세요 🍬");
+                }
+                appState.candies -= price;
+                appState.ownedItems.push(itemId);
+                typeScript(`🎉 [${COZY_SHOP_ITEMS.find(i=>i.id===itemId).name}] 소품을 정상적으로 구매 완료했습니다!`);
+            } else {
+                if (isPlaced) {
+                    appState.placedItems = appState.placedItems.filter(id => id !== itemId);
+                    typeScript("🧺 소품을 배치 해제하여 인벤토리에 안전하게 보관했습니다.");
+                } else {
+                    appState.placedItems.push(itemId);
+                    typeScript("🏡 골라주신 예쁜 소품이 방 구석 좌표에 알맞게 정밀 코디네이션 되었습니다!");
+                }
+            }
+
+            saveUserDataToStorage();
+            syncLayersAll();
+        }
+
+        function commitTalk() {
+            const inp = document.getElementById('chat-txt');
+            if(!inp.value.trim()) return;
+            inp.value = "";
+            
+            typeScript("💭 단짝 파트너가 깊은 생각을 나누기 위해 고민하고 있어...");
+            setTimeout(() => {
+                const answer = LOCAL_MOCK_RESPONSES[mockIndex];
+                mockIndex = (mockIndex + 1) % LOCAL_MOCK_RESPONSES.length;
+                typeScript(answer);
+            }, 1000);
+        }
+
+        function petCharacter() {
+            typeScript("🥰 쓰다듬어줘서 정말 고마워! 쿼터뷰 고정 원룸 공간 안에서 포근한 교감이 나를 채워주는 것 같아.");
+        }
+
+        function typeScript(txt) {
+            const target = document.getElementById('type-target');
+            if(!target) return;
+            target.innerText = "";
+            let i = 0;
+            clearInterval(window.typeTimer);
+            window.typeTimer = setInterval(() => {
+                if(i < txt.length) { target.innerText += txt.charAt(i); i++; } 
+                else { clearInterval(window.typeTimer); }
+            }, 40);
+        }
+
+        function renderMissions() {
+            const box = document.getElementById('mission-grid-box');
+            box.innerHTML = '';
+            CBT_BEHAVIOR_MISSIONS.forEach((m, idx) => {
+                const div = document.createElement('div');
+                div.className = "mission-card";
+                
+                const isDone = appState.completedMissions.includes(idx);
+                let btnHtml = `<button class="mission-btn" id="m-btn-${idx}" onclick="completeMission(${idx})">실천</button>`;
+                
+                if (isDone) {
+                    btnHtml = `<button class="mission-btn done" id="m-btn-${idx}" disabled>완료 ✔️</button>`;
+                }
+
+                div.innerHTML = `<span class="mission-text">${m}</span>${btnHtml}`;
+                box.appendChild(div);
+            });
+        }
+
+        function completeMission(idx) {
+            const btn = document.getElementById(`m-btn-${idx}`);
+            if(btn.classList.contains('done') || appState.completedMissions.includes(idx)) return;
+            
+            appState.completedMissions.push(idx);
+            appState.candies += 10;
+            
+            saveUserDataToStorage();
+            syncLayersAll(); 
+            
+            typeScript("🎯 행동 다이어리 미션 실천 완료! 긍정 보상으로 사탕 10개가 안전하게 적립되었습니다.");
+        }
+
+        // [인터페이스 통합 전환 제어장치]
+        function switchTab(id) {
+            const tabs = ['screen-setup', 'screen-home', 'screen-shop', 'screen-mission', 'screen-center'];
+            tabs.forEach(t => document.getElementById(t).classList.remove('active'));
+            document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(id).classList.add('active');
+            if(id === 'screen-setup') document.getElementById('tab-setup').classList.add('active');
+            if(id === 'screen-home') { 
+                document.getElementById('tab-home').classList.add('active'); 
+                typeScript("아늑하고 은은한 나의 쿼터뷰 룸에 다시 발을 들였어. 무엇이든 편안하게 얘기 나눠보자."); 
+            }
+            if(id === 'screen-shop') document.getElementById('tab-shop').classList.add('active');
+            if(id === 'screen-mission') document.getElementById('tab-mission').classList.add('active');
+            if(id === 'screen-center') document.getElementById('tab-center').classList.add('active');
+        }
+
+        function switchScreenDirect(id) {
+            const all = ['screen-login', 'screen-register', 'screen-survey-dep', 'screen-survey-val', 'screen-setup', 'screen-home', 'screen-shop', 'screen-mission', 'screen-center'];
+            all.forEach(s => document.getElementById(s).classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function switchAuthMode(mode) {
+            if(mode === 'register') {
+                switchScreenDirect('screen-register');
+            } else {
+                switchScreenDirect('screen-login');
+            }
+        }
+    </script>
+</body>
+</html>
